@@ -1,0 +1,4 @@
+Мод на MAX neMAX
+ФОТО: 1/index.png
+Текст: Мод на Макс neMAX нет слежки и сбора аналитики и тд
+Ссылка: https://github.com/nemax-dev/nemax_mod_releases/
