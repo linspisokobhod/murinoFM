@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Рекламный виджет (слайдер)</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+      background: #0b0e14;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      background-image: radial-gradient(ellipse at 20% 50%, #1a1f2e 0%, #0b0e14 70%);
+    }
+
+    .slider-wrapper {
+      width: 100%;
+      max-width: 600px;
+      background: rgba(22, 28, 40, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+    }
+
+    .slider-container {
+      width: 100%;
+    }
+
+    .ad-slide {
+      display: none;
+      padding: 20px;
+      flex-direction: column;
+      gap: 12px;
+      animation: fadeIn 0.4s ease;
+      overflow: hidden; /* главное – ничего не выходит за рамки слайда */
+    }
+    .ad-slide.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .ad-image {
+      width: 100%;
+      height: 220px;
+      background: #131a24;
+      border-radius: 16px;
+      overflow: hidden; /* обрезаем изображение, если оно больше */
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ad-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* сохраняем пропорции, заполняя контейнер */
+      display: block;
+    }
+    .ad-slide:hover .ad-image img {
+      transform: scale(1.02);
+    }
+    .no-image {
+      color: #5a647a;
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .no-image svg {
+      width: 48px;
+      height: 48px;
+      stroke: #5a647a;
+      stroke-width: 1.5;
+      fill: none;
+    }
+
+    .ad-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      overflow: hidden; /* если текст слишком длинный, обрезаем с многоточием? но мы не хотим обрезать текст, поэтому лучше word-wrap */
+    }
+    .ad-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #f0f2f8;
+      line-height: 1.3;
+      word-wrap: break-word;
+    }
+    .ad-text {
+      font-size: 15px;
+      color: #c8cee0;
+      line-height: 1.6;
+      word-wrap: break-word;
+    }
+    .ad-audio {
+      width: 100%;
+      overflow: hidden;
+    }
+    .ad-audio audio {
+      width: 100%;
+      height: 42px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      outline: none;
+      display: block; /* убираем лишние отступы */
+      max-width: 100%; /* чтобы не вылезал */
+    }
+    .media-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #8892aa;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 2px;
+    }
+
+    /* Прогресс-бар */
+    .progress-container {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f0c27f, #fc4a1a);
+      transition: width 0.3s linear;
+      border-radius: 2px;
+    }
+
+    /* Навигация */
+    .slider-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px 20px;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .nav-btn, .pause-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: #b0baca;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .nav-btn:hover, .pause-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+    }
+    .nav-btn:active, .pause-btn:active {
+      transform: scale(0.92);
+    }
+
+    .dots {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+      justify-content: center;
+      flex-wrap: wrap;
+      overflow: hidden;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      transition: background 0.3s, transform 0.2s;
+      cursor: pointer;
+      border: none;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .dot.active {
+      background: #f0c27f;
+      transform: scale(1.3);
+    }
+    .dot:hover {
+      background: rgba(255, 255, 255, 0.4);
+    }
+
+    .slide-counter {
+      color: #8a92a6;
+      font-size: 14px;
+      font-weight: 500;
+      min-width: 50px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    /* Состояния */
+    .loading-state, .error-state, .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      color: #8a92a6;
+    }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid rgba(255, 255, 255, 0.06);
+      border-top-color: #f0c27f;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .reload-btn {
+      margin-top: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #b0baca;
+      padding: 8px 28px;
+      border-radius: 30px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .reload-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    @media (max-width: 500px) {
+      .slider-wrapper { max-width: 100%; }
+      .ad-image { height: 160px; }
+      .ad-title { font-size: 17px; }
+      .ad-text { font-size: 14px; }
+      .slider-controls { padding: 10px 14px 14px; }
+      .nav-btn, .pause-btn { width: 34px; height: 34px; font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="slider-wrapper" id="sliderWrapper">
+    <div class="slider-container" id="sliderContainer">
+      <div class="loading-state" id="loadingState">
+        <div class="spinner"></div>
+        <p>Загрузка рекламы…</p>
+      </div>
+    </div>
+    <div class="progress-container" id="progressContainer" style="display:none;">
+      <div class="progress-bar" id="progressBar" style="width:0%;"></div>
+    </div>
+    <div class="slider-controls" id="sliderControls" style="display:none;">
+      <button class="nav-btn" id="prevBtn">‹</button>
+      <div class="dots" id="dotsContainer"></div>
+      <span class="slide-counter" id="slideCounter">1/1</span>
+      <button class="pause-btn" id="pauseBtn" title="Пауза / Воспроизвести">⏸</button>
+      <button class="nav-btn" id="nextBtn">›</button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const ADS_FILE_URL = 'ads.txt';
+
+      const container = document.getElementById('sliderContainer');
+      const controls = document.getElementById('sliderControls');
+      const dotsContainer = document.getElementById('dotsContainer');
+      const slideCounter = document.getElementById('slideCounter');
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const progressBar = document.getElementById('progressBar');
+      const progressContainer = document.getElementById('progressContainer');
+
+      let ads = [];
+      let currentIndex = 0;
+      let timer = null;
+      let isPaused = false;
+      let currentDelay = 10000;
+      let timeLeft = currentDelay;
+      let progressInterval = null;
+
+      function notifyHeight() {
+        requestAnimationFrame(() => {
+          const height = document.documentElement.scrollHeight;
+          if (window.parent !== window) {
+            window.parent.postMessage({ type: 'adWidgetResize', height }, '*');
+          }
+        });
+      }
+
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(() => notifyHeight());
+        ro.observe(container);
+        ro.observe(document.body);
+      }
+
+      function parseAds(text) {
+        const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const blocks = normalized.split(/\n\s*\n/).filter(b => b.trim() !== '');
+        const result = [];
+        for (const block of blocks) {
+          const lines = block.split('\n').map(l => l.trim()).filter(l => l !== '');
+          if (lines.length === 0) continue;
+          let title = '', video = '', photo = '', textContent = '', link = '';
+          let idx = 0;
+          const first = lines[0] || '';
+          if (!/^(видео|фото|текст|ссылка)\s*:/i.test(first)) {
+            title = first;
+            idx = 1;
+          }
+          for (let i = idx; i < lines.length; i++) {
+            const line = lines[i];
+            const lower = line.toLowerCase();
+            if (lower.startsWith('видео:')) {
+              video = line.replace(/^видео\s*:\s*/i, '').trim();
+            } else if (lower.startsWith('фото:')) {
+              photo = line.replace(/^фото\s*:\s*/i, '').trim();
+            } else if (lower.startsWith('текст:')) {
+              textContent = line.replace(/^текст\s*:\s*/i, '').trim();
+            } else if (lower.startsWith('ссылка:')) {
+              link = line.replace(/^ссылка\s*:\s*/i, '').trim();
+              if (link && !/^https?:\/\//i.test(link)) {
+                link = 'https://' + link;
+              }
+            } else {
+              if (!title && i === 0) title = line;
+              else textContent = textContent ? textContent + '\n' + line : line;
+            }
+          }
+          if (!title) title = `Реклама ${result.length + 1}`;
+          result.push({ title: title.trim(), video, photo, text: textContent.trim(), link });
+        }
+        return result;
+      }
+
+      function createSlideHTML(ad, index) {
+        const hasVideo = ad.video && ad.video.length > 0;
+        const hasPhoto = ad.photo && ad.photo.length > 0;
+
+        let imageHTML = '';
+        if (hasPhoto) {
+          imageHTML = `<img src="${ad.photo}" alt="${ad.title}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">`;
+          imageHTML += `<div class="no-image" style="display:none;">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.5"/><polyline points="3,17 8,12 12,16 18,10 21,13" stroke="currentColor" stroke-width="1.5"/></svg>
+            <span>Нет фото</span>
+          </div>`;
+        } else {
+          imageHTML = `<div class="no-image">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.5"/><polyline points="3,17 8,12 12,16 18,10 21,13" stroke="currentColor" stroke-width="1.5"/></svg>
+            <span>Нет фото</span>
+          </div>`;
+        }
+
+        let audioHTML = '';
+        if (hasVideo) {
+          audioHTML = `
+            <div class="ad-audio">
+              <div class="media-label">
+                <svg viewBox="0 0 24 24" width="14" height="14"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" fill="none"/><polygon points="10,8 16,12 10,16" fill="currentColor"/></svg>
+                Аудио
+              </div>
+              <audio controls preload="metadata" src="${ad.video}"></audio>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="ad-slide" data-index="${index}" data-link="${ad.link || ''}">
+            <div class="ad-image">${imageHTML}</div>
+            <div class="ad-body">
+              <div class="ad-title">${ad.title}</div>
+              ${ad.text ? `<div class="ad-text">${ad.text}</div>` : ''}
+              ${audioHTML}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderSlides(adsArray) {
+        ads = adsArray;
+        if (!ads || ads.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div style="font-size:48px;margin-bottom:8px;">📭</div>
+              <h3 style="color:#f0f2f8;font-weight:400;">Нет объявлений</h3>
+              <p style="font-size:14px;color:#8a92a6;">Файл ads.txt пуст или неверного формата.</p>
+            </div>
+          `;
+          controls.style.display = 'none';
+          progressContainer.style.display = 'none';
+          notifyHeight();
+          return;
+        }
+
+        container.innerHTML = '';
+        for (let i = 0; i < ads.length; i++) {
+          container.insertAdjacentHTML('beforeend', createSlideHTML(ads[i], i));
+        }
+
+        document.querySelectorAll('.ad-slide').forEach(slide => {
+          const link = slide.dataset.link;
+          if (link) {
+            slide.addEventListener('click', function(e) {
+              if (e.target.closest('audio')) return;
+              window.open(link, '_blank');
+            });
+            slide.style.cursor = 'pointer';
+          } else {
+            slide.style.cursor = 'default';
+          }
+        });
+
+        dotsContainer.innerHTML = '';
+        for (let i = 0; i < ads.length; i++) {
+          const dot = document.createElement('button');
+          dot.className = 'dot';
+          dot.dataset.index = i;
+          dot.addEventListener('click', () => goToSlide(i));
+          dotsContainer.appendChild(dot);
+        }
+
+        controls.style.display = 'flex';
+        progressContainer.style.display = 'block';
+        currentIndex = 0;
+        showSlide(currentIndex);
+        startTimer();
+        setTimeout(notifyHeight, 100);
+
+        prevBtn.onclick = () => goToSlide(currentIndex - 1);
+        nextBtn.onclick = () => goToSlide(currentIndex + 1);
+        pauseBtn.onclick = togglePause;
+      }
+
+      function showSlide(index) {
+        const slides = document.querySelectorAll('.ad-slide');
+        if (!slides.length) return;
+        if (index < 0) index = slides.length - 1;
+        if (index >= slides.length) index = 0;
+
+        slides.forEach(s => s.classList.remove('active'));
+        const target = slides[index];
+        if (target) {
+          target.classList.add('active');
+          document.querySelectorAll('.dot').forEach((dot, i) => {
+            dot.classList.toggle('active', i === index);
+          });
+          slideCounter.textContent = `${index+1}/${slides.length}`;
+          currentIndex = index;
+          const hasVideo = target.querySelector('audio') !== null;
+          currentDelay = hasVideo ? 20000 : 10000;
+          timeLeft = currentDelay;
+          updateProgressBar();
+          setTimeout(notifyHeight, 50);
+        }
+      }
+
+      function updateProgressBar() {
+        if (isPaused) return;
+        const progress = ((currentDelay - timeLeft) / currentDelay) * 100;
+        progressBar.style.width = Math.min(100, progress) + '%';
+      }
+
+      function startTimer() {
+        stopTimer();
+        if (isPaused) return;
+        timeLeft = currentDelay;
+        updateProgressBar();
+        progressInterval = setInterval(() => {
+          if (isPaused) return;
+          timeLeft -= 100;
+          if (timeLeft <= 0) {
+            timeLeft = 0;
+            updateProgressBar();
+            const next = (currentIndex + 1) % document.querySelectorAll('.ad-slide').length;
+            goToSlide(next);
+          } else {
+            updateProgressBar();
+          }
+        }, 100);
+      }
+
+      function stopTimer() {
+        if (progressInterval) {
+          clearInterval(progressInterval);
+          progressInterval = null;
+        }
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      }
+
+      function restartTimer() {
+        stopTimer();
+        if (!isPaused) startTimer();
+      }
+
+      function togglePause() {
+        isPaused = !isPaused;
+        pauseBtn.textContent = isPaused ? '▶' : '⏸';
+        if (isPaused) {
+          stopTimer();
+          progressBar.style.transition = 'none';
+        } else {
+          progressBar.style.transition = 'width 0.3s linear';
+          if (timeLeft <= 0) {
+            const next = (currentIndex + 1) % document.querySelectorAll('.ad-slide').length;
+            goToSlide(next);
+          } else {
+            startTimer();
+          }
+        }
+      }
+
+      function goToSlide(index) {
+        const slides = document.querySelectorAll('.ad-slide');
+        if (!slides.length) return;
+        if (index < 0) index = slides.length - 1;
+        if (index >= slides.length) index = 0;
+        if (index === currentIndex) {
+          if (!isPaused) restartTimer();
+          return;
+        }
+        showSlide(index);
+        if (!isPaused) restartTimer();
+      }
+
+      function loadAds() {
+        container.innerHTML = `
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Загрузка рекламы…</p>
+          </div>
+        `;
+        controls.style.display = 'none';
+        progressContainer.style.display = 'none';
+
+        fetch(ADS_FILE_URL)
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.text();
+          })
+          .then(text => {
+            const parsed = parseAds(text);
+            renderSlides(parsed);
+          })
+          .catch(err => {
+            console.error('Ошибка загрузки ads.txt:', err);
+            container.innerHTML = `
+              <div class="error-state">
+                <div style="font-size:48px;margin-bottom:8px;">⚠️</div>
+                <h3 style="color:#f0f2f8;font-weight:500;">Не удалось загрузить ads.txt</h3>
+                <p style="font-size:14px;color:#8a92a6;">${err.message || 'Проверьте путь к файлу.'}</p>
+                <p style="margin-top:8px;font-size:13px;color:#6a728a;">
+                  Убедитесь, что <code style="background:rgba(255,255,255,0.06);padding:2px 10px;border-radius:6px;">${ADS_FILE_URL}</code> доступен.
+                </p>
+                <button class="reload-btn" onclick="location.reload()">⟳ Попробовать снова</button>
+              </div>
+            `;
+            controls.style.display = 'none';
+            progressContainer.style.display = 'none';
+            notifyHeight();
+          });
+      }
+
+      loadAds();
+      window.addEventListener('load', () => {
+        setTimeout(notifyHeight, 500);
+        setTimeout(notifyHeight, 1000);
+      });
+      document.addEventListener('click', function(e) {
+        if (e.target.closest('audio')) e.stopPropagation();
+      }, true);
+    })();
+  </script>
+</body>
+</html>
